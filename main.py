@@ -3,14 +3,19 @@ import sys
 
 pygame.init()
 
+# 🎶 Background music
+pygame.mixer.music.load("music.ogg")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
+
 # Screen
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Dobrodružstvo Gamebook")
 
-# Fonts
-FONT = pygame.font.SysFont("arial", 24)
-BIG_FONT = pygame.font.SysFont("arial", 32)
+# 🪶 Fonts – starý štýl písma
+FONT = pygame.font.Font("medieval.ttf", 28)
+BIG_FONT = pygame.font.Font("medieval.ttf", 36)
 
 # Colors
 WHITE = (255, 255, 255)
@@ -86,23 +91,23 @@ def draw_text(text, x, y, max_width=700):
     y_offset = 0
     for word in words:
         if FONT.size(line + word)[0] > max_width:
-            screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
+            screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
             y_offset += 30
             line = ""
         line += word + " "
-    screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
+    screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
 
 def draw_inventory():
     if "Meč" in inventory:
-        screen.blit(sword_icon, (WIDTH - 90, HEIGHT - 90))  # pravý dolný roh
+        screen.blit(sword_icon, (WIDTH - 90, HEIGHT - 90))
     inv_text = "Inventár: " + ", ".join(inventory) if inventory else "Inventár: (prázdny)"
-    screen.blit(FONT.render(inv_text, True, BLACK), (20, HEIGHT - 60))
-
+    screen.blit(FONT.render(inv_text, True, WHITE), (20, HEIGHT - 60))
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
     pygame.draw.rect(screen, GREEN, (20, 20, max(0, player_health) * 2, 25))
     screen.blit(FONT.render(f"Zdravie: {player_health}", True, WHITE), (230, 20))
+
 def damage_flash():
     flash_surface = pygame.Surface((WIDTH, HEIGHT))
     flash_surface.set_alpha(120)
@@ -128,14 +133,13 @@ def fade_transition():
         pygame.display.flip()
         pygame.time.delay(30)
 
-
 def main():
     global current_node, player_health
 
     clock = pygame.time.Clock()
 
     while True:
-        screen.blit(background_img, (0, 0))  # 🌲 Pozadie
+        screen.blit(background_img, (0, 0))
 
         node = nodes[current_node]
         draw_text(node.text, 20, 80)
@@ -152,13 +156,13 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
 
-        # Draw buttons with hover
+        # Draw buttons with hover effect
         for i, option in enumerate(node.options):
             btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
             color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
             pygame.draw.rect(screen, color, btn_rect, border_radius=8)
             pygame.draw.rect(screen, BLACK, btn_rect, 2, border_radius=8)
-            text = FONT.render(option["text"], True, BLACK)
+            text = FONT.render(option["text"], True, WHITE)
             screen.blit(text, (btn_rect.x + 10, btn_rect.y + 10))
 
             if btn_rect.collidepoint(mouse) and click:
