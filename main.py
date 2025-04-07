@@ -24,6 +24,9 @@ GREEN = (0, 200, 0)
 background_img = pygame.image.load("background_forest.jpg").convert()
 background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
+sword_icon = pygame.image.load("sword.png").convert_alpha()
+sword_icon = pygame.transform.scale(sword_icon, (64, 64))
+
 # Player stats
 player_health = 100
 inventory = []
@@ -90,8 +93,11 @@ def draw_text(text, x, y, max_width=700):
     screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
 
 def draw_inventory():
+    if "Meč" in inventory:
+        screen.blit(sword_icon, (WIDTH - 90, HEIGHT - 90))  # pravý dolný roh
     inv_text = "Inventár: " + ", ".join(inventory) if inventory else "Inventár: (prázdny)"
     screen.blit(FONT.render(inv_text, True, BLACK), (20, HEIGHT - 60))
+
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
