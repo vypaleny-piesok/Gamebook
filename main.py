@@ -83,15 +83,15 @@ def draw_text(text, x, y, max_width=700):
     y_offset = 0
     for word in words:
         if FONT.size(line + word)[0] > max_width:
-            screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
+            screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
             y_offset += 30
             line = ""
         line += word + " "
-    screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
+    screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
 
 def draw_inventory():
     inv_text = "Inventár: " + ", ".join(inventory) if inventory else "Inventár: (prázdny)"
-    screen.blit(FONT.render(inv_text, True, BLACK), (20, HEIGHT - 60))
+    screen.blit(FONT.render(inv_text, True, WHITE), (20, HEIGHT - 60))
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
