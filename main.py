@@ -83,15 +83,15 @@ def draw_text(text, x, y, max_width=700):
     y_offset = 0
     for word in words:
         if FONT.size(line + word)[0] > max_width:
-            screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
+            screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
             y_offset += 30
             line = ""
         line += word + " "
-    screen.blit(FONT.render(line, True, WHITE), (x, y + y_offset))
+    screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
 
 def draw_inventory():
     inv_text = "Inventár: " + ", ".join(inventory) if inventory else "Inventár: (prázdny)"
-    screen.blit(FONT.render(inv_text, True, WHITE), (20, HEIGHT - 60))
+    screen.blit(FONT.render(inv_text, True, BLACK), (20, HEIGHT - 60))
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
@@ -99,16 +99,29 @@ def draw_health():
     screen.blit(FONT.render(f"Zdravie: {player_health}", True, WHITE), (230, 20))
 def damage_flash():
     flash_surface = pygame.Surface((WIDTH, HEIGHT))
-    flash_surface.set_alpha(100)  # Priehľadnosť
-    flash_surface.fill((255, 0, 0))  # Červená
+    flash_surface.set_alpha(120)
+    flash_surface.fill((255, 0, 0))
+    screen.blit(flash_surface, (0, 0))
+    pygame.display.flip()
+    pygame.time.delay(150)
 
-    for _ in range(5):  # zopakuj párkrát pre blikací efekt
-        screen.blit(flash_surface, (0, 0))
+def item_flash():
+    flash_surface = pygame.Surface((WIDTH, HEIGHT))
+    flash_surface.set_alpha(100)
+    flash_surface.fill((0, 255, 0))
+    screen.blit(flash_surface, (0, 0))
+    pygame.display.flip()
+    pygame.time.delay(150)
+
+def fade_transition():
+    fade = pygame.Surface((WIDTH, HEIGHT))
+    fade.fill((0, 0, 0))
+    for alpha in range(0, 255, 15):
+        fade.set_alpha(alpha)
+        screen.blit(fade, (0, 0))
         pygame.display.flip()
-        pygame.time.delay(50)
-        screen.blit(background_img, (0, 0))
-        pygame.display.flip()
-        pygame.time.delay(50)
+        pygame.time.delay(30)
+
 
 def main():
     global current_node, player_health
@@ -148,9 +161,10 @@ def main():
                     if change < 0:
                         damage_flash()
                     player_health += change
-
                 if "item" in option:
                     inventory.append(option["item"])
+                    item_flash()
+                fade_transition()
                 current_node = option["next"]
                 break
 
