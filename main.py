@@ -97,6 +97,18 @@ def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
     pygame.draw.rect(screen, GREEN, (20, 20, max(0, player_health) * 2, 25))
     screen.blit(FONT.render(f"Zdravie: {player_health}", True, WHITE), (230, 20))
+def damage_flash():
+    flash_surface = pygame.Surface((WIDTH, HEIGHT))
+    flash_surface.set_alpha(100)  # Priehľadnosť
+    flash_surface.fill((255, 0, 0))  # Červená
+
+    for _ in range(5):  # zopakuj párkrát pre blikací efekt
+        screen.blit(flash_surface, (0, 0))
+        pygame.display.flip()
+        pygame.time.delay(50)
+        screen.blit(background_img, (0, 0))
+        pygame.display.flip()
+        pygame.time.delay(50)
 
 def main():
     global current_node, player_health
@@ -132,7 +144,11 @@ def main():
 
             if btn_rect.collidepoint(mouse) and click:
                 if "health_change" in option:
-                    player_health += option["health_change"]
+                    change = option["health_change"]
+                    if change < 0:
+                        damage_flash()
+                    player_health += change
+
                 if "item" in option:
                     inventory.append(option["item"])
                 current_node = option["next"]
