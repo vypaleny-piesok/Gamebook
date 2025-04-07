@@ -6,7 +6,7 @@ pygame.init()
 # Screen
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Gamebook Adventure")
+pygame.display.set_caption("Dobrodružstvo Gamebook")
 
 # Fonts
 FONT = pygame.font.SysFont("arial", 24)
@@ -15,9 +15,14 @@ BIG_FONT = pygame.font.SysFont("arial", 32)
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-LIGHT_GRAY = (200, 200, 200)
+LIGHT_GRAY = (220, 220, 220)
+DARK_GRAY = (160, 160, 160)
 RED = (200, 0, 0)
 GREEN = (0, 200, 0)
+
+# Background image
+background_img = pygame.image.load("background_forest.jpg").convert()
+background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
 # Player stats
 player_health = 100
@@ -29,43 +34,43 @@ class StoryNode:
         self.text = text
         self.options = options  # List of dicts {text, next, health_change, item}
 
-# Define story nodes
+# Define story nodes (Slovak translation)
 nodes = {
     "start": StoryNode(
-        "You wake up in a forest. A sword lies nearby.",
+        "Zobudíš sa v lese. Neďaleko leží meč.",
         [
-            {"text": "Take the sword", "next": "with_sword", "item": "Sword"},
-            {"text": "Ignore the sword", "next": "no_sword"}
+            {"text": "Zobrať meč", "next": "with_sword", "item": "Meč"},
+            {"text": "Ignorovať meč", "next": "no_sword"}
         ]
     ),
     "with_sword": StoryNode(
-        "You feel safer with the sword. A wild beast attacks!",
+        "Cítiš sa bezpečnejšie s mečom. Útočí na teba divé zviera!",
         [
-            {"text": "Fight", "next": "fight_beast", "health_change": -20},
-            {"text": "Run", "next": "run_away", "health_change": -10}
+            {"text": "Bojovať", "next": "fight_beast", "health_change": -20},
+            {"text": "Utiecť", "next": "run_away", "health_change": -10}
         ]
     ),
     "no_sword": StoryNode(
-        "You keep walking. A wild beast attacks!",
+        "Kráčaš ďalej. Zrazu ťa napadne divé zviera!",
         [
-            {"text": "Fight barehanded", "next": "fight_beast", "health_change": -40},
-            {"text": "Run", "next": "run_away", "health_change": -10}
+            {"text": "Bojovať holými rukami", "next": "fight_beast", "health_change": -40},
+            {"text": "Utiecť", "next": "run_away", "health_change": -10}
         ]
     ),
     "fight_beast": StoryNode(
-        "You fought bravely. The beast is gone.",
+        "Bojoval si statočne. Zviera je porazené.",
         [
-            {"text": "Continue", "next": "end"}
+            {"text": "Pokračovať", "next": "end"}
         ]
     ),
     "run_away": StoryNode(
-        "You escaped, but you're hurt.",
+        "Utiekol si, ale si zranený.",
         [
-            {"text": "Continue", "next": "end"}
+            {"text": "Pokračovať", "next": "end"}
         ]
     ),
     "end": StoryNode(
-        "Your adventure continues...",
+        "Tvoje dobrodružstvo pokračuje...",
         []
     )
 }
@@ -85,13 +90,13 @@ def draw_text(text, x, y, max_width=700):
     screen.blit(FONT.render(line, True, BLACK), (x, y + y_offset))
 
 def draw_inventory():
-    inv_text = "Inventory: " + ", ".join(inventory) if inventory else "Inventory: (empty)"
+    inv_text = "Inventár: " + ", ".join(inventory) if inventory else "Inventár: (prázdny)"
     screen.blit(FONT.render(inv_text, True, BLACK), (20, HEIGHT - 60))
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
     pygame.draw.rect(screen, GREEN, (20, 20, max(0, player_health) * 2, 25))
-    screen.blit(FONT.render(f"Health: {player_health}", True, WHITE), (230, 20))
+    screen.blit(FONT.render(f"Zdravie: {player_health}", True, WHITE), (230, 20))
 
 def main():
     global current_node, player_health
@@ -99,10 +104,10 @@ def main():
     clock = pygame.time.Clock()
 
     while True:
-        screen.fill(WHITE)
+        screen.blit(background_img, (0, 0))  # 🌲 Pozadie
 
         node = nodes[current_node]
-        draw_text(node.text, 20, 70)
+        draw_text(node.text, 20, 80)
         draw_health()
         draw_inventory()
 
@@ -116,12 +121,14 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
 
-        # Draw buttons
+        # Draw buttons with hover
         for i, option in enumerate(node.options):
-            btn_rect = pygame.Rect(50, 300 + i * 60, 700, 40)
-            pygame.draw.rect(screen, LIGHT_GRAY, btn_rect)
+            btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
+            color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
+            pygame.draw.rect(screen, color, btn_rect, border_radius=8)
+            pygame.draw.rect(screen, BLACK, btn_rect, 2, border_radius=8)
             text = FONT.render(option["text"], True, BLACK)
-            screen.blit(text, (btn_rect.x + 10, btn_rect.y + 5))
+            screen.blit(text, (btn_rect.x + 10, btn_rect.y + 10))
 
             if btn_rect.collidepoint(mouse) and click:
                 if "health_change" in option:
