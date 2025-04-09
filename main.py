@@ -43,7 +43,7 @@ show_inventory = False
 
 # Falling leaves setup (adjusted for fewer leaves)
 leaves = []
-for _ in range(random.randint(2, 4)):  # Now only 2–4 leaves
+for _ in range(random.randint(2, 4)):
     leaf = {
         "x": random.randint(0, WIDTH),
         "y": random.randint(-HEIGHT, 0),
@@ -51,6 +51,12 @@ for _ in range(random.randint(2, 4)):  # Now only 2–4 leaves
         "img": leaf_img
     }
     leaves.append(leaf)
+
+# Typewriter effect variables
+typed_text = ""
+last_update_time = 0
+text_char_index = 0
+TEXT_SPEED = 30  # milliseconds per character
 
 # Story node class
 class StoryNode:
@@ -129,7 +135,6 @@ def draw_inventory():
             if sword_rect.collidepoint(pygame.mouse.get_pos()):
                 draw_outline_text("Meč", WIDTH - 130, HEIGHT - 110)
 
-
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
     pygame.draw.rect(screen, GREEN, (20, 20, max(0, player_health) * 2, 25))
@@ -160,21 +165,26 @@ def fade_transition():
         pygame.display.flip()
         pygame.time.delay(30)
 
-
-# Function to draw leaves on screen
 def draw_leaves():
     for leaf in leaves:
-        screen.blit(leaf["img"], (leaf["x"], leaf["y"]))  # Correct access to 'x' and 'y' keys
+        screen.blit(leaf["img"], (leaf["x"], leaf["y"]))
         leaf["y"] += leaf["speed"]
-
-        # Reset leaf position once it goes off screen
         if leaf["y"] > HEIGHT:
             leaf["y"] = random.randint(-HEIGHT, -20)
             leaf["x"] = random.randint(0, WIDTH)
 
+# Typewriter logic
+def update_typed_text(full_text, current_time):
+    global typed_text, text_char_index, last_update_time
+    if text_char_index < len(full_text):
+        if current_time - last_update_time > TEXT_SPEED:
+            typed_text += full_text[text_char_index]
+            text_char_index += 1
+            last_update_time = current_time
 
 def main():
     global current_node, player_health, show_inventory
+    global typed_text, text_char_index
 
     clock = pygame.time.Clock()
 
@@ -183,7 +193,8 @@ def main():
         draw_leaves()
 
         node = nodes[current_node]
-        draw_text(node.text, 20, 80)
+        update_typed_text(node.text, pygame.time.get_ticks())
+        draw_text(typed_text, 20, 80)
         draw_health()
         draw_inventory()
 
@@ -202,26 +213,32 @@ def main():
         # Inventory icon
         inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 10))
 
-        # Draw buttons with hover
-        for i, option in enumerate(node.options):
-            btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
-            color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
-            pygame.draw.rect(screen, color, btn_rect, border_radius=8)
-            pygame.draw.rect(screen, BLACK, btn_rect, 2, border_radius=8)
-            draw_outline_text(option["text"], btn_rect.x + 10, btn_rect.y + 10)
+        # Draw buttons with hover and allow clicking only after full text
+        if text_char_index >= len(node.text):
+            for i, option in enumerate(node.options):
+                btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
+                color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
+                pygame.draw.rect(screen, color, btn_rect, border_radius=8)
+                pygame.draw.rect(screen, BLACK, btn_rect, 2, border_radius=8)
+                draw_outline_text(option["text"], btn_rect.x + 10, btn_rect.y + 10)
 
-            if btn_rect.collidepoint(mouse) and click:
-                if "health_change" in option:
-                    change = option["health_change"]
-                    if change < 0:
-                        damage_flash()
-                    player_health += change
-                if "item" in option:
-                    inventory.append(option["item"])
-                    item_flash()
-                fade_transition()
-                current_node = option["next"]
-                break
+                if btn_rect.collidepoint(mouse) and click:
+                    if "health_change" in option:
+                        change = option["health_change"]
+                        if change < 0:
+                            damage_flash()
+                        player_health += change
+                    if "item" in option:
+                        inventory.append(option["item"])
+                        item_flash()
+
+                    fade_transition()
+                    current_node = option["next"]
+
+                    # Reset typewriter
+                    typed_text = ""
+                    text_char_index = 0
+                    break
 
         pygame.display.flip()
         clock.tick(60)
