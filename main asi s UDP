@@ -2,7 +2,6 @@ import pygame
 import sys
 import random
 
-
 from network import UDPNetwork
 
 # For testing, set one player as server, one as client
@@ -13,10 +12,7 @@ chat_input = ""
 chat_log = []
 MAX_CHAT_LINES = 6
 
-
-
 pygame.init()
-
 
 # Screen
 WIDTH, HEIGHT = 800, 600
@@ -74,9 +70,11 @@ TEXT_SPEED = 30  # milliseconds per character
 
 # Story node class
 class StoryNode:
-    def __init__(self, text, options):
+    def __init__(self, text, options, is_combat=False, enemy=None):
         self.text = text
         self.options = options
+        self.is_combat = is_combat
+        self.enemy = enemy  # Dict like {"name": "Wolf", "health": 30}
 
 # Define story nodes
 nodes = {
@@ -102,10 +100,10 @@ nodes = {
         ]
     ),
     "fight_beast": StoryNode(
-        "Bojoval si statočne. Zviera je porazené.",
-        [
-            {"text": "Pokračovať", "next": "end"}
-        ]
+        "Stretol si sa s divým zvieraťom! Boj začína!",
+        [],
+        is_combat=True,
+        enemy={"name": "Divý vlk", "health": 30}
     ),
     "run_away": StoryNode(
         "Utiekol si, ale si zranený.",
@@ -120,6 +118,11 @@ nodes = {
 }
 
 current_node = "start"
+
+# Combat logic variables
+in_combat = False
+enemy = None
+combat_log = []
 
 # Draw outlined text
 def draw_text(text, x, y, max_width=700):
@@ -143,11 +146,21 @@ def draw_outline_text(text, x, y):
 
 def draw_inventory():
     if show_inventory:
-        pygame.draw.rect(screen, (0, 0, 0, 180), (WIDTH - 150, HEIGHT - 200, 140, 140))
-        if "Meč" in inventory:
-            sword_rect = screen.blit(sword_icon, (WIDTH - 130, HEIGHT - 180))
-            if sword_rect.collidepoint(pygame.mouse.get_pos()):
-                draw_outline_text("Meč", WIDTH - 130, HEIGHT - 110)
+        inv_x, inv_y = WIDTH - 210, 60
+        inv_width, inv_height = 200, 100
+        pygame.draw.rect(screen, (30, 30, 30), (inv_x, inv_y, inv_width, inv_height), border_radius=8)
+        pygame.draw.rect(screen, WHITE, (inv_x, inv_y, inv_width, inv_height), 2, border_radius=8)
+
+        padding = 10
+        icon_size = 40
+        spacing = 50
+        for idx, item in enumerate(inventory):
+            item_x = inv_x + padding + (idx % 4) * spacing
+            item_y = inv_y + padding + (idx // 4) * spacing
+            if item == "Meč":
+                icon_rect = screen.blit(pygame.transform.scale(sword_icon, (icon_size, icon_size)), (item_x, item_y))
+                if icon_rect.collidepoint(pygame.mouse.get_pos()):
+                    draw_outline_text(item, item_x, item_y + icon_size + 5)
 
 def draw_health():
     pygame.draw.rect(screen, RED, (20, 20, 200, 25))
@@ -199,8 +212,7 @@ def update_typed_text(full_text, current_time):
 def main():
     global current_node, player_health, show_inventory
     global typed_text, text_char_index
-    global chat_input, chat_log
-
+    global chat_input, chat_log, in_combat, enemy, combat_log
 
     clock = pygame.time.Clock()
 
@@ -251,10 +263,77 @@ def main():
 
 
         # Inventory icon
-        inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 10))
+        inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 30))
 
-        # Draw buttons with hover and allow clicking only after full text
-        if text_char_index >= len(node.text):
+        if node.is_combat:
+            in_combat = True
+            if enemy is None:
+                enemy = dict(node.enemy)  # Copy the enemy
+                combat_log = []
+
+            # Display enemy and combat log
+            draw_outline_text(f"{enemy['name']} - HP: {enemy['health']}", 50, 260)
+            for i, log in enumerate(combat_log[-3:]):
+                draw_outline_text(log, 50, 290 + i * 25)
+
+            # Combat options
+            combat_choices = [
+                {"text": "Útok", "action": "attack"},
+                {"text": "Útek", "action": "flee"},
+                {"text": "Špeciálny útok", "action": "special"}
+            ]
+            for i, option in enumerate(combat_choices):
+                btn_rect = pygame.Rect(50, 400 + i * 50, 700, 45)
+                color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
+                pygame.draw.rect(screen, color, btn_rect, border_radius=8)
+                pygame.draw.rect(screen, BLACK, btn_rect, 2, border_radius=8)
+                draw_outline_text(option["text"], btn_rect.x + 10, btn_rect.y + 10)
+
+                if btn_rect.collidepoint(mouse) and click:
+                    result_text = ""
+                    if option["action"] == "attack":
+                        dmg = random.randint(5, 15)
+                        enemy["health"] -= dmg
+                        result_text = f"Zasiahol si nepriateľa za {dmg} HP."
+                    elif option["action"] == "flee":
+                        player_health -= 10
+                        result_text = "Utiekol si, ale si zranený za 10 HP."
+                        current_node = "run_away"
+                        fade_transition()
+                        typed_text = ""
+                        text_char_index = 0
+                        enemy = None
+                        in_combat = False
+                        break
+                    elif option["action"] == "special":
+                        if random.random() < 0.3:  # 30% chance
+                            dmg = random.randint(20, 30)
+                            enemy["health"] -= dmg
+                            result_text = f"Špeciálny útok uspel! {dmg} HP!"
+                        else:
+                            player_health -= 5
+                            result_text = "Špeciálny útok zlyhal. Stratil si 5 HP."
+
+                    # Enemy attacks back if alive
+                    if enemy["health"] > 0 and option["action"] != "flee":
+                        enemy_dmg = random.randint(5, 12)
+                        player_health -= enemy_dmg
+                        result_text += f" {enemy['name']} zaútočil za {enemy_dmg} HP."
+
+                    combat_log.append(result_text)
+
+                    # Check if enemy is dead
+                    if enemy["health"] <= 0:
+                        current_node = "end"
+                        fade_transition()
+                        typed_text = ""
+                        text_char_index = 0
+                        enemy = None
+                        in_combat = False
+                        break
+
+        # Draw normal story options
+        if text_char_index >= len(node.text) and not node.is_combat:
             for i, option in enumerate(node.options):
                 btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
                 color = DARK_GRAY if btn_rect.collidepoint(mouse) else LIGHT_GRAY
