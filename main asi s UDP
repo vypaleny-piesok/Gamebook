@@ -352,9 +352,14 @@ def main():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
+                node = nodes[current_node]
+                # Instantly reveal all text (skip typewriter effect)
+                typed_text = node.text
+                text_char_index = len(node.text)
+
+                # Toggle inventory if icon is clicked
                 if inventory_icon_rect.collidepoint(mouse):
                     show_inventory = not show_inventory
-
 
         # Inventory icon
         inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 30))
