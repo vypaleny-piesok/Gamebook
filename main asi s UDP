@@ -1,16 +1,21 @@
 import pygame
 import sys
 import random
+import tkinter as tk
+from tkinter import messagebox
+import json
+
 
 from network import UDPNetwork
 
 # For testing, set one player as server, one as client
-IS_SERVER = False  # Set False for client
+IS_SERVER = True  # Set False for client
 network = UDPNetwork(is_server=IS_SERVER)
 
 chat_input = ""
 chat_log = []
 MAX_CHAT_LINES = 6
+
 
 pygame.init()
 
@@ -209,12 +214,43 @@ nodes = {
     )
 }
 
+
+
 current_node = "start"
 
 # Combat logic variables
 in_combat = False
 enemy = None
 combat_log = []
+
+
+def save_game():
+    game_state = {
+        'current_node': current_node,
+        'inventory': inventory,
+        'health': player_health
+    }
+    with open("savefile.json", "w") as f:
+        json.dump(game_state, f)
+    messagebox.showinfo("Game Saved", "Your progress has been saved!")
+
+def load_game():
+    global current_node, inventory, player_health, typed_text, text_char_index
+    try:
+        with open("savefile.json", "r") as f:
+            game_state = json.load(f)
+            current_node = game_state.get('current_node', 'start')
+            inventory = game_state.get('inventory', [])
+            player_health = game_state.get('health', 100)
+
+            # Reset typewriter state
+            node = nodes[current_node]
+            typed_text = ""
+            text_char_index = 0
+            messagebox.showinfo("Game Loaded", "Your progress has been loaded!")
+    except FileNotFoundError:
+        messagebox.showwarning("Load Failed", "No saved game found.")
+
 
 # Draw outlined text
 def draw_text(text, x, y, max_width=700):
@@ -301,6 +337,9 @@ def update_typed_text(full_text, current_time):
             text_char_index += 1
             last_update_time = current_time
 
+root = tk.Tk()
+root.withdraw()  # Hides the root window but allows messageboxes
+
 def main():
     global current_node, player_health, show_inventory
     global typed_text, text_char_index
@@ -317,6 +356,7 @@ def main():
         draw_text(typed_text, 20, 80)
         draw_health()
         draw_inventory()
+
         # Draw chat box
         pygame.draw.rect(screen, (50, 50, 50), (10, HEIGHT - 170, 780, 160))
         for i, msg in enumerate(chat_log[-MAX_CHAT_LINES:]):
@@ -328,6 +368,16 @@ def main():
 
         mouse = pygame.mouse.get_pos()
         click = False
+        # Save button (draw it)
+        save_button_rect = pygame.Rect(WIDTH - 150, HEIGHT - 50, 120, 35)
+        pygame.draw.rect(screen, DARK_GRAY if save_button_rect.collidepoint(mouse) else LIGHT_GRAY, save_button_rect,
+                         border_radius=8)
+        draw_outline_text("💾 Uložiť", save_button_rect.x + 10, save_button_rect.y + 5)
+        load_button_rect = pygame.Rect(WIDTH - 280, HEIGHT - 50, 120, 35)
+        pygame.draw.rect(screen, DARK_GRAY if load_button_rect.collidepoint(mouse) else LIGHT_GRAY, load_button_rect,
+                         border_radius=8)
+        draw_outline_text("📂 Načítať", load_button_rect.x + 10, load_button_rect.y + 5)
+
         # Receive chat or game state
         for addr, msg in network.get_messages():
             if msg.startswith("chat:"):
@@ -350,6 +400,7 @@ def main():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
+
                 node = nodes[current_node]
                 # Instantly reveal all text (skip typewriter effect)
                 typed_text = node.text
@@ -358,6 +409,10 @@ def main():
                 # Toggle inventory if icon is clicked
                 if inventory_icon_rect.collidepoint(mouse):
                     show_inventory = not show_inventory
+                if save_button_rect.collidepoint(mouse):
+                    save_game()
+                if load_button_rect.collidepoint(mouse):
+                    load_game()
 
         # Inventory icon
         inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 30))
@@ -460,4 +515,3 @@ def main():
         clock.tick(60)
 
 main()
-
