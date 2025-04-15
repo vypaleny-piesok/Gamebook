@@ -9,7 +9,7 @@ import json
 from network import UDPNetwork
 
 # For testing, set one player as server, one as client
-IS_SERVER = True  # Set False for client
+IS_SERVER = False # Set False for client
 network = UDPNetwork(is_server=IS_SERVER)
 
 chat_input = ""
@@ -53,6 +53,7 @@ leaf_img = pygame.transform.scale(leaf_img, (32, 32))
 
 # Player stats
 player_health = 100
+coins = 0
 inventory = ["Meč"]
 show_inventory = False
 
@@ -75,11 +76,14 @@ TEXT_SPEED = 30  # milliseconds per character
 
 # Story node class
 class StoryNode:
-    def __init__(self, text, options, is_combat=False, enemy=None):
+    def __init__(self, text, options, is_combat=False, enemy=None, coins=0):
         self.text = text
         self.options = options
         self.is_combat = is_combat
         self.enemy = enemy  # Dict like {"name": "Wolf", "health": 30}
+        self.coins = coins  # New attribute to store coin rewards
+        self.coins_collected = False
+
 
 # Define story nodes
 nodes = {
@@ -88,21 +92,24 @@ nodes = {
         [
             {"text": "Skúsiť si spomenúť, čo sa stalo", "next": "memory_lost"},
             {"text": "Preskúmať les", "next": "explore_forest"}
-        ]
+        ],
+        coins=10  # Give 10 coins for this node
     ),
     "memory_lost": StoryNode(
         "Snažíš sa spomenúť na niečo z minulosti, ale tvoje myšlienky sú roztrieštené. Cítiš len zúfalstvo a chaos. Bolesť v hlave sa zintenzívňuje, ale nedokážeš si vybaviť nič. Srdce ti bije rýchlo. Čo ak si niekto alebo niečo vymazalo tvoje spomienky?",
         [
             {"text": "Pokúsiť sa upokojiť a pokračovať v hľadaní útočišťa", "next": "find_shelter"},
             {"text": "Získať sa na chvíľu a sedieť", "next": "rest_under_tree"}
-        ]
+        ],
+        coins = 5
     ),
     "explore_forest": StoryNode(
         "Kráčaš ďalej lesom, ale čím viac sa dostávaš do hlbšieho lesa, tým viac sa cítiš znepokojený. Kde sa nachádzaš? Zrazu počuješ niečo šuchotať v kroví.",
         [
             {"text": "Skontrolovať, čo je v kroví", "next": "check_bush"},
             {"text": "Pokračovať v ceste ďalej", "next": "deeper_forest"}
-        ]
+        ],
+        coins = 3
     ),
     "find_shelter": StoryNode(
         "Rozhodneš sa hľadať útočište predtým, než sa zotmie. Po chvíli nájdeš malú jaskyňu, kde sa môžeš skryť. Je tam ticho a bezpečne sa cítiš. Možno tu nájdeš nejaké stopy o tom, čo sa stalo.",
@@ -328,6 +335,19 @@ def draw_leaves():
             leaf["y"] = random.randint(-HEIGHT, -20)
             leaf["x"] = random.randint(0, WIDTH)
 
+def go_to_next_node(next_node):
+    global current_node, player_coins
+    # Get the next node
+    current_node = next_node
+    node = nodes[current_node]
+
+    # Add coins from the current node
+    player_coins += node.coins
+
+    # Your existing logic to handle the transition to the new node, including story text and options.
+    print(f"Coins: {player_coins}")  # Display the updated coin count for testing
+
+
 # Typewriter logic
 def update_typed_text(full_text, current_time):
     global typed_text, text_char_index, last_update_time
@@ -344,6 +364,7 @@ def main():
     global current_node, player_health, show_inventory
     global typed_text, text_char_index
     global chat_input, chat_log, in_combat, enemy, combat_log
+    global coins  # Add this line to reference the global coins variable
 
     clock = pygame.time.Clock()
 
@@ -352,6 +373,12 @@ def main():
         draw_leaves()
 
         node = nodes[current_node]
+
+        # Only collect coins if not already collected for this node
+        if not node.coins_collected:
+            coins += node.coins  # Add coins for this node
+            node.coins_collected = True  # Mark coins as collected for this node
+
         update_typed_text(node.text, pygame.time.get_ticks())
         draw_text(typed_text, 20, 80)
         draw_health()
@@ -365,6 +392,9 @@ def main():
         # Draw chat input
         pygame.draw.rect(screen, WHITE, (10, HEIGHT - 30, 780, 25))
         draw_outline_text("> " + chat_input, 15, HEIGHT - 28)
+
+        # Draw the coins at the top-left of the screen
+        draw_outline_text(f"Coins: {coins}", 600, 20)
 
         mouse = pygame.mouse.get_pos()
         click = False
