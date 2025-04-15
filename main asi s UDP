@@ -5,7 +5,7 @@ import random
 from network import UDPNetwork
 
 # For testing, set one player as server, one as client
-IS_SERVER = True  # Set False for client
+IS_SERVER = False  # Set False for client
 network = UDPNetwork(is_server=IS_SERVER)
 
 chat_input = ""
@@ -48,7 +48,7 @@ leaf_img = pygame.transform.scale(leaf_img, (32, 32))
 
 # Player stats
 player_health = 100
-inventory = []
+inventory = ["Meč"]
 show_inventory = False
 
 # Falling leaves setup (adjusted for fewer leaves)
@@ -208,8 +208,6 @@ nodes = {
         []
     )
 }
-
-
 
 current_node = "start"
 
@@ -462,3 +460,4 @@ def main():
         clock.tick(60)
 
 main()
+
