@@ -18,6 +18,7 @@ MAX_CHAT_LINES = 6
 
 
 pygame.init()
+font = pygame.font.SysFont(None, 24)  # (font_name=None for default font, size=24)
 
 # Screen
 WIDTH, HEIGHT = 800, 600
@@ -231,6 +232,30 @@ enemy = None
 combat_log = []
 
 
+
+stamina = 100
+
+player_xp = {
+    "combat": 0,
+    "survival": 0,
+    "charisma": 0
+}
+
+player_levels = {
+    "combat": 1,
+    "survival": 1,
+    "charisma": 1
+}
+
+def gain_xp(skill, amount):
+    player_xp[skill] += amount
+    xp_to_next = player_levels[skill] * 20
+    if player_xp[skill] >= xp_to_next:
+        player_xp[skill] -= xp_to_next
+        player_levels[skill] += 1
+        combat_log.append(f"Zlepšil si si zručnosť {skill.capitalize()} na úroveň {player_levels[skill]}!")
+
+
 def save_game():
     game_state = {
         'current_node': current_node,
@@ -279,10 +304,11 @@ def draw_outline_text(text, x, y):
                 screen.blit(FONT.render(text, True, BLACK), (x + dx, y + dy))
     screen.blit(FONT.render(text, True, WHITE), (x, y))
 
+
 def draw_inventory():
     if show_inventory:
         inv_x, inv_y = WIDTH - 210, 60
-        inv_width, inv_height = 200, 100
+        inv_width, inv_height = 200, 200  # Adjust the height to fit the coins inside
         pygame.draw.rect(screen, (30, 30, 30), (inv_x, inv_y, inv_width, inv_height), border_radius=8)
         pygame.draw.rect(screen, WHITE, (inv_x, inv_y, inv_width, inv_height), 2, border_radius=8)
 
@@ -297,10 +323,40 @@ def draw_inventory():
                 if icon_rect.collidepoint(pygame.mouse.get_pos()):
                     draw_outline_text(item, item_x, item_y + icon_size + 5)
 
+        # Draw coins in the inventory
+        coin_text = f"Coins: {coins}"
+        draw_outline_text(coin_text, inv_x + padding, inv_y + inv_height - 40)  # Positioned near the bottom
+
+
 def draw_health():
-    pygame.draw.rect(screen, RED, (20, 20, 200, 25))
-    pygame.draw.rect(screen, GREEN, (20, 20, max(0, player_health) * 2, 25))
-    draw_outline_text(f"Zdravie: {player_health}", 230, 20)
+    # Health Bar
+    pygame.draw.rect(screen, BLACK, (20, 20, 200, 25))  # Background
+    pygame.draw.rect(screen, RED, (20, 20, max(0, player_health) * 2, 25))  # Foreground
+    draw_outline_text(f"Zdravie", 230, 20)
+
+    # Stamina ("Schopnosť") Bar
+    schopnost_bar_width = 200
+    schopnost_bar_height = 25
+    schopnost_x = 330  # Slightly moved to the right
+    schopnost_y = 20
+
+    # Background
+    pygame.draw.rect(screen, (50, 50, 50), (schopnost_x, schopnost_y, schopnost_bar_width, schopnost_bar_height))
+    # Green bar
+    current_schopnost_width = (stamina / 100) * schopnost_bar_width
+    pygame.draw.rect(screen, (0, 255, 0), (schopnost_x, schopnost_y, current_schopnost_width, schopnost_bar_height))
+
+    # Schopnosť Text - same font as health
+    small_font = pygame.font.SysFont("arial", 18)  # Same font as "Zdravie"
+    schopnost_text1 = small_font.render("Schopnosť podávať telesný", True, (255, 255, 255))
+    schopnost_text2 = small_font.render("alebo duševný výkon", True, (255, 255, 255))
+
+    text_x = schopnost_x + schopnost_bar_width + 10
+    text_y = schopnost_y
+
+    screen.blit(schopnost_text1, (text_x, text_y))
+    screen.blit(schopnost_text2, (text_x, text_y + 18))  # little bit lower for second line
+
 
 def damage_flash():
     flash_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -360,7 +416,7 @@ def update_typed_text(full_text, current_time):
 root = tk.Tk()
 root.withdraw()  # Hides the root window but allows messageboxes
 
-def main():
+def main(stamina=100):
     global current_node, player_health, show_inventory
     global typed_text, text_char_index
     global chat_input, chat_log, in_combat, enemy, combat_log
@@ -393,8 +449,7 @@ def main():
         pygame.draw.rect(screen, WHITE, (10, HEIGHT - 30, 780, 25))
         draw_outline_text("> " + chat_input, 15, HEIGHT - 28)
 
-        # Draw the coins at the top-left of the screen
-        draw_outline_text(f"Coins: {coins}", 600, 20)
+
 
         mouse = pygame.mouse.get_pos()
         click = False
@@ -473,6 +528,8 @@ def main():
 
                 if btn_rect.collidepoint(mouse) and click:
                     result_text = ""
+                    defended = False  # Reset defend each round
+
                     if option["action"] == "attack":
                         dmg = random.randint(5, 15)
                         enemy["health"] -= dmg
@@ -486,6 +543,7 @@ def main():
                         text_char_index = 0
                         enemy = None
                         in_combat = False
+                        stamina = 100  # Full stamina after escape
                         break
                     elif option["action"] == "special":
                         if random.random() < 0.3:  # 30% chance
@@ -495,10 +553,16 @@ def main():
                         else:
                             player_health -= 5
                             result_text = "Špeciálny útok zlyhal. Stratil si 5 HP."
+                    elif option["action"] == "defend":
+                        defended = True
+                        stamina = min(100, stamina + 15)
+                        result_text = "Brániš sa a získavaš späť 15 schopnosti."
 
-                    # Enemy attacks back if alive
-                    if enemy["health"] > 0 and option["action"] != "flee":
+                    # Enemy attacks back if enemy is still alive
+                    if enemy and enemy["health"] > 0 and option["action"] != "flee":
                         enemy_dmg = random.randint(5, 12)
+                        if defended:
+                            enemy_dmg = enemy_dmg // 2  # Take half damage if defended
                         player_health -= enemy_dmg
                         result_text += f" {enemy['name']} zaútočil za {enemy_dmg} HP."
 
@@ -512,7 +576,11 @@ def main():
                         text_char_index = 0
                         enemy = None
                         in_combat = False
+                        stamina = 100  # Full stamina after combat
                         break
+
+                    # Passive small regen after your action
+                    stamina = min(100, stamina + 5)
 
         # Draw normal story options
         if text_char_index >= len(node.text) and not node.is_combat:
