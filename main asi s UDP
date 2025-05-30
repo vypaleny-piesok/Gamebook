@@ -5,22 +5,19 @@ import tkinter as tk
 from tkinter import messagebox
 import json
 
-
 from network import UDPNetwork
 from story_nodes import nodes  # Import the nodes from the story_nodes.py file
 
-
 # For testing, set one player as server, one as client
-IS_SERVER = False # Set False for client
+IS_SERVER = False  # Set False for client
 network = UDPNetwork(is_server=IS_SERVER)
 
-chat_input = ""
+chat_input = ""  # Global variable
 chat_log = []
 MAX_CHAT_LINES = 6
 
-
 pygame.init()
-font = pygame.font.SysFont(None, 24)  # (font_name=None for default font, size=24)
+font = pygame.font.SysFont(None, 24)
 
 # Screen
 WIDTH, HEIGHT = 800, 600
@@ -60,7 +57,7 @@ coins = 0
 inventory = ["Meč"]
 show_inventory = False
 
-# Falling leaves setup (adjusted for fewer leaves)
+# Falling leaves setup
 leaves = []
 for _ in range(random.randint(2, 4)):
     leaf = {
@@ -75,10 +72,7 @@ for _ in range(random.randint(2, 4)):
 typed_text = ""
 last_update_time = 0
 text_char_index = 0
-TEXT_SPEED = 30  # milliseconds per character
-
-
-
+TEXT_SPEED = 30
 
 current_node = "start"
 
@@ -86,8 +80,6 @@ current_node = "start"
 in_combat = False
 enemy = None
 combat_log = []
-
-
 
 stamina = 100
 
@@ -111,36 +103,32 @@ def gain_xp(skill, amount):
         player_levels[skill] += 1
         combat_log.append(f"Zlepšil si si zručnosť {skill.capitalize()} na úroveň {player_levels[skill]}!")
 
-
 def save_game():
     game_state = {
         'current_node': current_node,
         'inventory': inventory,
-        'health': player_health
+        'health': player_health,
+        'coins': coins
     }
     with open("savefile.json", "w") as f:
         json.dump(game_state, f)
     messagebox.showinfo("Game Saved", "Your progress has been saved!")
 
 def load_game():
-    global current_node, inventory, player_health, typed_text, text_char_index
+    global current_node, inventory, player_health, coins, typed_text, text_char_index
     try:
         with open("savefile.json", "r") as f:
             game_state = json.load(f)
             current_node = game_state.get('current_node', 'start')
-            inventory = game_state.get('inventory', [])
+            inventory = game_state.get('inventory', ["Meč"])
             player_health = game_state.get('health', 100)
-
-            # Reset typewriter state
-            node = nodes[current_node]
+            coins = game_state.get('coins', 0)
             typed_text = ""
             text_char_index = 0
             messagebox.showinfo("Game Loaded", "Your progress has been loaded!")
     except FileNotFoundError:
         messagebox.showwarning("Load Failed", "No saved game found.")
 
-
-# Draw outlined text
 def draw_text(text, x, y, max_width=700):
     words = text.split()
     line = ""
@@ -160,14 +148,12 @@ def draw_outline_text(text, x, y):
                 screen.blit(FONT.render(text, True, BLACK), (x + dx, y + dy))
     screen.blit(FONT.render(text, True, WHITE), (x, y))
 
-
 def draw_inventory():
     if show_inventory:
         inv_x, inv_y = WIDTH - 210, 60
-        inv_width, inv_height = 200, 200  # Adjust the height to fit the coins inside
+        inv_width, inv_height = 200, 200
         pygame.draw.rect(screen, (30, 30, 30), (inv_x, inv_y, inv_width, inv_height), border_radius=8)
         pygame.draw.rect(screen, WHITE, (inv_x, inv_y, inv_width, inv_height), 2, border_radius=8)
-
         padding = 10
         icon_size = 40
         spacing = 50
@@ -178,41 +164,27 @@ def draw_inventory():
                 icon_rect = screen.blit(pygame.transform.scale(sword_icon, (icon_size, icon_size)), (item_x, item_y))
                 if icon_rect.collidepoint(pygame.mouse.get_pos()):
                     draw_outline_text(item, item_x, item_y + icon_size + 5)
-
-        # Draw coins in the inventory
         coin_text = f"Coins: {coins}"
-        draw_outline_text(coin_text, inv_x + padding, inv_y + inv_height - 40)  # Positioned near the bottom
-
+        draw_outline_text(coin_text, inv_x + padding, inv_y + inv_height - 40)
 
 def draw_health():
-    # Health Bar
-    pygame.draw.rect(screen, BLACK, (20, 20, 200, 25))  # Background
-    pygame.draw.rect(screen, RED, (20, 20, max(0, player_health) * 2, 25))  # Foreground
+    pygame.draw.rect(screen, BLACK, (20, 20, 200, 25))
+    pygame.draw.rect(screen, RED, (20, 20, max(0, player_health) * 2, 25))
     draw_outline_text(f"Zdravie", 230, 20)
-
-    # Stamina ("Schopnosť") Bar
     schopnost_bar_width = 200
     schopnost_bar_height = 25
-    schopnost_x = 330  # Slightly moved to the right
+    schopnost_x = 330
     schopnost_y = 20
-
-    # Background
     pygame.draw.rect(screen, (50, 50, 50), (schopnost_x, schopnost_y, schopnost_bar_width, schopnost_bar_height))
-    # Green bar
     current_schopnost_width = (stamina / 100) * schopnost_bar_width
     pygame.draw.rect(screen, (0, 255, 0), (schopnost_x, schopnost_y, current_schopnost_width, schopnost_bar_height))
-
-    # Schopnosť Text - same font as health
-    small_font = pygame.font.SysFont("arial", 18)  # Same font as "Zdravie"
+    small_font = pygame.font.SysFont("arial", 18)
     schopnost_text1 = small_font.render("Schopnosť podávať telesný", True, (255, 255, 255))
     schopnost_text2 = small_font.render("alebo duševný výkon", True, (255, 255, 255))
-
     text_x = schopnost_x + schopnost_bar_width + 10
     text_y = schopnost_y
-
     screen.blit(schopnost_text1, (text_x, text_y))
-    screen.blit(schopnost_text2, (text_x, text_y + 18))  # little bit lower for second line
-
+    screen.blit(schopnost_text2, (text_x, text_y + 18))
 
 def damage_flash():
     flash_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -248,19 +220,16 @@ def draw_leaves():
             leaf["x"] = random.randint(0, WIDTH)
 
 def go_to_next_node(next_node):
-    global current_node, player_coins
-    # Get the next node
+    global current_node, coins, typed_text, text_char_index
     current_node = next_node
     node = nodes[current_node]
+    if not node.coins_collected:
+        coins += node.coins
+        node.coins_collected = True
+    print(f"Coins: {coins}")
+    typed_text = ""
+    text_char_index = 0
 
-    # Add coins from the current node
-    player_coins += node.coins
-
-    # Your existing logic to handle the transition to the new node, including story text and options.
-    print(f"Coins: {player_coins}")  # Display the updated coin count for testing
-
-
-# Typewriter logic
 def update_typed_text(full_text, current_time):
     global typed_text, text_char_index, last_update_time
     if text_char_index < len(full_text):
@@ -270,13 +239,11 @@ def update_typed_text(full_text, current_time):
             last_update_time = current_time
 
 root = tk.Tk()
-root.withdraw()  # Hides the root window but allows messageboxes
+root.withdraw()
 
 def main(stamina=100):
-    global current_node, player_health, show_inventory
-    global typed_text, text_char_index
-    global chat_input, chat_log, in_combat, enemy, combat_log
-    global coins  # Add this line to reference the global coins variable
+    global current_node, player_health, show_inventory, coins, chat_input
+    global typed_text, text_char_index, in_combat, enemy, combat_log
 
     clock = pygame.time.Clock()
 
@@ -285,41 +252,27 @@ def main(stamina=100):
         draw_leaves()
 
         node = nodes[current_node]
-
-        # Only collect coins if not already collected for this node
-        if not node.coins_collected:
-            coins += node.coins  # Add coins for this node
-            node.coins_collected = True  # Mark coins as collected for this node
-
         update_typed_text(node.text, pygame.time.get_ticks())
         draw_text(typed_text, 20, 80)
         draw_health()
         draw_inventory()
 
-        # Draw chat box
         pygame.draw.rect(screen, (50, 50, 50), (10, HEIGHT - 170, 780, 160))
         for i, msg in enumerate(chat_log[-MAX_CHAT_LINES:]):
             draw_outline_text(msg, 20, HEIGHT - 160 + i * 25)
 
-        # Draw chat input
         pygame.draw.rect(screen, WHITE, (10, HEIGHT - 30, 780, 25))
         draw_outline_text("> " + chat_input, 15, HEIGHT - 28)
 
-
-
         mouse = pygame.mouse.get_pos()
         click = False
-        # Save button (draw it)
         save_button_rect = pygame.Rect(WIDTH - 150, HEIGHT - 50, 120, 35)
-        pygame.draw.rect(screen, DARK_GRAY if save_button_rect.collidepoint(mouse) else LIGHT_GRAY, save_button_rect,
-                         border_radius=8)
+        pygame.draw.rect(screen, DARK_GRAY if save_button_rect.collidepoint(mouse) else LIGHT_GRAY, save_button_rect, border_radius=8)
         draw_outline_text("💾 Uložiť", save_button_rect.x + 10, save_button_rect.y + 5)
         load_button_rect = pygame.Rect(WIDTH - 280, HEIGHT - 50, 120, 35)
-        pygame.draw.rect(screen, DARK_GRAY if load_button_rect.collidepoint(mouse) else LIGHT_GRAY, load_button_rect,
-                         border_radius=8)
+        pygame.draw.rect(screen, DARK_GRAY if load_button_rect.collidepoint(mouse) else LIGHT_GRAY, load_button_rect, border_radius=8)
         draw_outline_text("📂 Načítať", load_button_rect.x + 10, load_button_rect.y + 5)
 
-        # Receive chat or game state
         for addr, msg in network.get_messages():
             if msg.startswith("chat:"):
                 chat_log.append("Them: " + msg[5:])
@@ -341,13 +294,10 @@ def main(stamina=100):
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click = True
-
                 node = nodes[current_node]
-                # Instantly reveal all text (skip typewriter effect)
                 typed_text = node.text
                 text_char_index = len(node.text)
 
-                # Toggle inventory if icon is clicked
                 if inventory_icon_rect.collidepoint(mouse):
                     show_inventory = not show_inventory
                 if save_button_rect.collidepoint(mouse):
@@ -355,21 +305,18 @@ def main(stamina=100):
                 if load_button_rect.collidepoint(mouse):
                     load_game()
 
-        # Inventory icon
         inventory_icon_rect = screen.blit(inventory_icon, (WIDTH - 60, 30))
 
         if node.is_combat:
             in_combat = True
             if enemy is None:
-                enemy = dict(node.enemy)  # Copy the enemy
+                enemy = dict(node.enemy)
                 combat_log = []
 
-            # Display enemy and combat log
             draw_outline_text(f"{enemy['name']} - HP: {enemy['health']}", 50, 260)
             for i, log in enumerate(combat_log[-3:]):
                 draw_outline_text(log, 50, 290 + i * 25)
 
-            # Combat options
             combat_choices = [
                 {"text": "Útok", "action": "attack"},
                 {"text": "Útek", "action": "flee"},
@@ -384,61 +331,59 @@ def main(stamina=100):
 
                 if btn_rect.collidepoint(mouse) and click:
                     result_text = ""
-                    defended = False  # Reset defend each round
+                    defended = False
 
                     if option["action"] == "attack":
                         dmg = random.randint(5, 15)
                         enemy["health"] -= dmg
                         result_text = f"Zasiahol si nepriateľa za {dmg} HP."
+                        gain_xp("combat", 5)
                     elif option["action"] == "flee":
                         player_health -= 10
                         result_text = "Utiekol si, ale si zranený za 10 HP."
-                        current_node = "run_away"
-                        fade_transition()
-                        typed_text = ""
-                        text_char_index = 0
-                        enemy = None
+                        go_to_next_node("run_away")
                         in_combat = False
-                        stamina = 100  # Full stamina after escape
+                        enemy = None
+                        stamina = 100
                         break
                     elif option["action"] == "special":
-                        if random.random() < 0.3:  # 30% chance
+                        if random.random() < 0.3:
                             dmg = random.randint(20, 30)
                             enemy["health"] -= dmg
                             result_text = f"Špeciálny útok uspel! {dmg} HP!"
+                            gain_xp("combat", 10)
                         else:
                             player_health -= 5
                             result_text = "Špeciálny útok zlyhal. Stratil si 5 HP."
-                    elif option["action"] == "defend":
-                        defended = True
-                        stamina = min(100, stamina + 15)
-                        result_text = "Brániš sa a získavaš späť 15 schopnosti."
 
-                    # Enemy attacks back if enemy is still alive
                     if enemy and enemy["health"] > 0 and option["action"] != "flee":
                         enemy_dmg = random.randint(5, 12)
                         if defended:
-                            enemy_dmg = enemy_dmg // 2  # Take half damage if defended
+                            enemy_dmg = enemy_dmg // 2
                         player_health -= enemy_dmg
                         result_text += f" {enemy['name']} zaútočil za {enemy_dmg} HP."
+                        damage_flash()
 
                     combat_log.append(result_text)
 
-                    # Check if enemy is dead
                     if enemy["health"] <= 0:
-                        current_node = "end"
-                        fade_transition()
-                        typed_text = ""
-                        text_char_index = 0
-                        enemy = None
+                        if node.condition == "win":
+                            go_to_next_node(node.options[0]["next"])
+                        else:
+                            go_to_next_node("fight_beast_portal")
                         in_combat = False
-                        stamina = 100  # Full stamina after combat
+                        enemy = None
+                        stamina = 100
+                        break
+                    elif player_health <= 0:
+                        go_to_next_node("fight_beast_portal_lose")
+                        in_combat = False
+                        enemy = None
+                        stamina = 100
                         break
 
-                    # Passive small regen after your action
                     stamina = min(100, stamina + 5)
 
-        # Draw normal story options
         if text_char_index >= len(node.text) and not node.is_combat:
             for i, option in enumerate(node.options):
                 btn_rect = pygame.Rect(50, 300 + i * 60, 700, 45)
@@ -456,13 +401,7 @@ def main(stamina=100):
                     if "item" in option:
                         inventory.append(option["item"])
                         item_flash()
-
-                    fade_transition()
-                    current_node = option["next"]
-
-                    # Reset typewriter
-                    typed_text = ""
-                    text_char_index = 0
+                    go_to_next_node(option["next"])
                     break
 
         pygame.display.flip()
